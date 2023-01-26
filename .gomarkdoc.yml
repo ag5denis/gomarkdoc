@@ -6,6 +6,6 @@ header: |+
   [![codecov](https://codecov.io/gh/princjef/gomarkdoc/branch/master/graph/badge.svg?token=171XNH5XLT)](https://codecov.io/gh/princjef/gomarkdoc)
   
 repository:
-  url: https://github.com/princjef/gomarkdoc
+  url: https://github.com/ag5denis/gomarkdoc
   defaultBranch: master
   path: /

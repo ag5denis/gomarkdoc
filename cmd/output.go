@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/princjef/gomarkdoc"
-	"github.com/princjef/gomarkdoc/lang"
-	"github.com/princjef/gomarkdoc/logger"
+	"github.com/ag5denis/gomarkdoc"
+	"github.com/ag5denis/gomarkdoc/lang"
+	"github.com/ag5denis/gomarkdoc/logger"
 )
 
 // WriteOutput writes the Output of the documentation to the specified files.

@@ -1,7 +1,7 @@
 package main
 
 import (
-	C "github.com/princjef/gomarkdoc/cmd"
+	C "github.com/ag5denis/gomarkdoc/cmd"
 	"log"
 )
 

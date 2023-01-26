@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ag5denis/gomarkdoc/logger"
 	"github.com/go-git/go-git/v5"
-	"github.com/princjef/gomarkdoc/logger"
 )
 
 type (

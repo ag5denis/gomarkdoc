@@ -1,6 +1,6 @@
 package cmd
 
-import "github.com/princjef/gomarkdoc/lang"
+import "github.com/ag5denis/gomarkdoc/lang"
 
 // PackageSpec defines the data available to the --Output option's template.
 // Information is recomputed for each package generated.

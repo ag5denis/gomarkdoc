@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"github.com/princjef/gomarkdoc/cmd/gomarkdoc"
 	"io"
 	"os"
 	"path/filepath"

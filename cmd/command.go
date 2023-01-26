@@ -19,10 +19,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/princjef/gomarkdoc"
-	"github.com/princjef/gomarkdoc/format"
-	"github.com/princjef/gomarkdoc/lang"
-	"github.com/princjef/gomarkdoc/logger"
+	"github.com/ag5denis/gomarkdoc"
+	"github.com/ag5denis/gomarkdoc/format"
+	"github.com/ag5denis/gomarkdoc/lang"
+	"github.com/ag5denis/gomarkdoc/logger"
 )
 
 // Flags populated by goreleaser
