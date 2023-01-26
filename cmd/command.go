@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"bytes"
@@ -25,83 +25,47 @@ import (
 	"github.com/princjef/gomarkdoc/logger"
 )
 
-// PackageSpec defines the data available to the --output option's template.
-// Information is recomputed for each package generated.
-type PackageSpec struct {
-	// Dir holds the local path where the package is located. If the package is
-	// a remote package, this will always be ".".
-	Dir string
-
-	// ImportPath holds a representation of the package that should be unique
-	// for most purposes. If a package is on the filesystem, this is equivalent
-	// to the value of Dir. For remote packages, this holds the string used to
-	// import that package in code (e.g. "encoding/json").
-	ImportPath string
-	isWildcard bool
-	isLocal    bool
-	outputFile string
-	pkg        *lang.Package
-}
-
-type commandOptions struct {
-	repository            lang.Repo
-	output                string
-	header                string
-	headerFile            string
-	footer                string
-	footerFile            string
-	format                string
-	tags                  []string
-	templateOverrides     map[string]string
-	templateFileOverrides map[string]string
-	verbosity             int
-	includeUnexported     bool
-	check                 bool
-	embed                 bool
-	version               bool
-}
-
 // Flags populated by goreleaser
 var version = ""
 
 const configFilePrefix = ".gomarkdoc"
 
-func buildCommand() *cobra.Command {
-	var opts commandOptions
+func BuildCommand() *cobra.Command {
+	var opts CommandOptions
 	var configFile string
 
-	// cobra.OnInitialize(func() { buildConfig(configFile) })
+	// cobra.OnInitialize(func() { BuildConfig(configFile) })
 
 	var command = &cobra.Command{
 		Use:   "gomarkdoc [package ...]",
 		Short: "generate markdown documentation for golang code",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opts.version {
-				printVersion()
+			if opts.Version {
+				PrintVersion()
 				return nil
 			}
 
-			buildConfig(configFile)
+			BuildConfig(configFile)
 
 			// Load configuration from viper
-			opts.includeUnexported = viper.GetBool("includeUnexported")
-			opts.output = viper.GetString("output")
-			opts.check = viper.GetBool("check")
-			opts.embed = viper.GetBool("embed")
-			opts.format = viper.GetString("format")
-			opts.templateOverrides = viper.GetStringMapString("template")
-			opts.templateFileOverrides = viper.GetStringMapString("templateFile")
-			opts.header = viper.GetString("header")
-			opts.headerFile = viper.GetString("headerFile")
-			opts.footer = viper.GetString("footer")
-			opts.footerFile = viper.GetString("footerFile")
-			opts.tags = viper.GetStringSlice("tags")
-			opts.repository.Remote = viper.GetString("repository.url")
-			opts.repository.DefaultBranch = viper.GetString("repository.defaultBranch")
-			opts.repository.PathFromRoot = viper.GetString("repository.path")
+			opts.IncludeUnexported = viper.GetBool("IncludeUnexported")
+			opts.Output = viper.GetString("Output")
+			opts.Check = viper.GetBool("Check")
+			opts.Embed = viper.GetBool("Embed")
+			opts.Format = viper.GetString("Format")
+			opts.TemplateOverrides = viper.GetStringMapString("template")
+			opts.TemplateFileOverrides = viper.GetStringMapString("templateFile")
+			opts.Header = viper.GetString("Header")
+			opts.HeaderFile = viper.GetString("HeaderFile")
+			opts.Footer = viper.GetString("Footer")
+			opts.FooterFile = viper.GetString("FooterFile")
+			opts.Tags = viper.GetStringSlice("Tags")
+			opts.Repository.Remote = viper.GetString("Repository.url")
+			opts.Repository.DefaultBranch = viper.GetString("Repository.defaultBranch")
+			opts.Repository.PathFromRoot = viper.GetString("Repository.path")
 
-			if opts.check && opts.output == "" {
-				return errors.New("gomarkdoc: check mode cannot be run without an output set")
+			if opts.Check && opts.Output == "" {
+				return errors.New("gomarkdoc: Check mode cannot be run without an Output set")
 			}
 
 			if len(args) == 0 {
@@ -109,7 +73,7 @@ func buildCommand() *cobra.Command {
 				args = []string{"."}
 			}
 
-			return runCommand(args, opts)
+			return RunCommand(args, opts)
 		},
 	}
 
@@ -120,142 +84,142 @@ func buildCommand() *cobra.Command {
 		fmt.Sprintf("File from which to load configuration (default: %s.yml)", configFilePrefix),
 	)
 	command.Flags().BoolVarP(
-		&opts.includeUnexported,
+		&opts.IncludeUnexported,
 		"include-unexported",
 		"u",
 		false,
 		"Output documentation for unexported symbols, methods and fields in addition to exported ones.",
 	)
 	command.Flags().StringVarP(
-		&opts.output,
-		"output",
+		&opts.Output,
+		"Output",
 		"o",
 		"",
-		"File or pattern specifying where to write documentation output. Defaults to printing to stdout.",
+		"File or pattern specifying where to write documentation Output. Defaults to printing to stdout.",
 	)
 	command.Flags().BoolVarP(
-		&opts.check,
-		"check",
+		&opts.Check,
+		"Check",
 		"c",
 		false,
-		"Check the output to see if it matches the generated documentation. --output must be specified to use this.",
+		"Check the Output to see if it matches the generated documentation. --Output must be specified to use this.",
 	)
 	command.Flags().BoolVarP(
-		&opts.embed,
-		"embed",
+		&opts.Embed,
+		"Embed",
 		"e",
 		false,
 		"Embed documentation into existing markdown files if available, otherwise append to file.",
 	)
 	command.Flags().StringVarP(
-		&opts.format,
-		"format",
+		&opts.Format,
+		"Format",
 		"f",
 		"github",
-		"Format to use for writing output data. Valid options: github (default), azure-devops, plain",
+		"Format to use for writing Output data. Valid options: github (default), azure-devops, plain",
 	)
 	command.Flags().StringToStringVarP(
-		&opts.templateOverrides,
+		&opts.TemplateOverrides,
 		"template",
 		"t",
 		map[string]string{},
 		"Custom template string to use for the provided template name instead of the default template.",
 	)
 	command.Flags().StringToStringVar(
-		&opts.templateFileOverrides,
+		&opts.TemplateFileOverrides,
 		"template-file",
 		map[string]string{},
 		"Custom template file to use for the provided template name instead of the default template.",
 	)
 	command.Flags().StringVar(
-		&opts.header,
-		"header",
+		&opts.Header,
+		"Header",
 		"",
-		"Additional content to inject at the beginning of each output file.",
+		"Additional content to inject at the beginning of each Output file.",
 	)
 	command.Flags().StringVar(
-		&opts.headerFile,
-		"header-file",
+		&opts.HeaderFile,
+		"Header-file",
 		"",
-		"File containing additional content to inject at the beginning of each output file.",
+		"File containing additional content to inject at the beginning of each Output file.",
 	)
 	command.Flags().StringVar(
-		&opts.footer,
-		"footer",
+		&opts.Footer,
+		"Footer",
 		"",
-		"Additional content to inject at the end of each output file.",
+		"Additional content to inject at the end of each Output file.",
 	)
 	command.Flags().StringVar(
-		&opts.footerFile,
-		"footer-file",
+		&opts.FooterFile,
+		"Footer-file",
 		"",
-		"File containing additional content to inject at the end of each output file.",
+		"File containing additional content to inject at the end of each Output file.",
 	)
 	command.Flags().StringSliceVar(
-		&opts.tags,
-		"tags",
-		defaultTags(),
-		"Set of build tags to apply when choosing which files to include for documentation generation.",
+		&opts.Tags,
+		"Tags",
+		DefaultTags(),
+		"Set of build Tags to apply when choosing which files to include for documentation generation.",
 	)
 	command.Flags().CountVarP(
-		&opts.verbosity,
+		&opts.Verbosity,
 		"verbose",
 		"v",
-		"Log additional output from the execution of the command. Can be chained for additional verbosity.",
+		"Log additional Output from the execution of the command. Can be chained for additional Verbosity.",
 	)
 	command.Flags().StringVar(
-		&opts.repository.Remote,
-		"repository.url",
+		&opts.Repository.Remote,
+		"Repository.url",
 		"",
-		"Manual override for the git repository URL used in place of automatic detection.",
+		"Manual override for the git Repository URL used in place of automatic detection.",
 	)
 	command.Flags().StringVar(
-		&opts.repository.DefaultBranch,
-		"repository.default-branch",
+		&opts.Repository.DefaultBranch,
+		"Repository.default-branch",
 		"",
-		"Manual override for the git repository URL used in place of automatic detection.",
+		"Manual override for the git Repository URL used in place of automatic detection.",
 	)
 	command.Flags().StringVar(
-		&opts.repository.PathFromRoot,
-		"repository.path",
+		&opts.Repository.PathFromRoot,
+		"Repository.path",
 		"",
-		"Manual override for the path from the root of the git repository used in place of automatic detection.",
+		"Manual override for the path from the root of the git Repository used in place of automatic detection.",
 	)
 	command.Flags().BoolVar(
-		&opts.version,
-		"version",
+		&opts.Version,
+		"Version",
 		false,
-		"Print the version.",
+		"Print the Version.",
 	)
 
 	// We ignore the errors here because they only happen if the specified flag doesn't exist
-	_ = viper.BindPFlag("includeUnexported", command.Flags().Lookup("include-unexported"))
-	_ = viper.BindPFlag("output", command.Flags().Lookup("output"))
-	_ = viper.BindPFlag("check", command.Flags().Lookup("check"))
-	_ = viper.BindPFlag("embed", command.Flags().Lookup("embed"))
-	_ = viper.BindPFlag("format", command.Flags().Lookup("format"))
+	_ = viper.BindPFlag("IncludeUnexported", command.Flags().Lookup("include-unexported"))
+	_ = viper.BindPFlag("Output", command.Flags().Lookup("Output"))
+	_ = viper.BindPFlag("Check", command.Flags().Lookup("Check"))
+	_ = viper.BindPFlag("Embed", command.Flags().Lookup("Embed"))
+	_ = viper.BindPFlag("Format", command.Flags().Lookup("Format"))
 	_ = viper.BindPFlag("template", command.Flags().Lookup("template"))
 	_ = viper.BindPFlag("templateFile", command.Flags().Lookup("template-file"))
-	_ = viper.BindPFlag("header", command.Flags().Lookup("header"))
-	_ = viper.BindPFlag("headerFile", command.Flags().Lookup("header-file"))
-	_ = viper.BindPFlag("footer", command.Flags().Lookup("footer"))
-	_ = viper.BindPFlag("footerFile", command.Flags().Lookup("footer-file"))
-	_ = viper.BindPFlag("tags", command.Flags().Lookup("tags"))
-	_ = viper.BindPFlag("repository.url", command.Flags().Lookup("repository.url"))
-	_ = viper.BindPFlag("repository.defaultBranch", command.Flags().Lookup("repository.default-branch"))
-	_ = viper.BindPFlag("repository.path", command.Flags().Lookup("repository.path"))
+	_ = viper.BindPFlag("Header", command.Flags().Lookup("Header"))
+	_ = viper.BindPFlag("HeaderFile", command.Flags().Lookup("Header-file"))
+	_ = viper.BindPFlag("Footer", command.Flags().Lookup("Footer"))
+	_ = viper.BindPFlag("FooterFile", command.Flags().Lookup("Footer-file"))
+	_ = viper.BindPFlag("Tags", command.Flags().Lookup("Tags"))
+	_ = viper.BindPFlag("Repository.url", command.Flags().Lookup("Repository.url"))
+	_ = viper.BindPFlag("Repository.defaultBranch", command.Flags().Lookup("Repository.default-branch"))
+	_ = viper.BindPFlag("Repository.path", command.Flags().Lookup("Repository.path"))
 
 	return command
 }
 
-func defaultTags() []string {
+func DefaultTags() []string {
 	f, ok := os.LookupEnv("GOFLAGS")
 	if !ok {
 		return nil
 	}
 
 	fs := flag.NewFlagSet("goflags", flag.ContinueOnError)
-	tags := fs.String("tags", "", "")
+	tags := fs.String("Tags", "", "")
 
 	if err := fs.Parse(strings.Fields(f)); err != nil {
 		return nil
@@ -268,7 +232,7 @@ func defaultTags() []string {
 	return strings.Split(*tags, ",")
 }
 
-func buildConfig(configFile string) {
+func BuildConfig(configFile string) {
 	if configFile != "" {
 		viper.SetConfigFile(configFile)
 	} else {
@@ -286,26 +250,26 @@ func buildConfig(configFile string) {
 	}
 }
 
-func runCommand(paths []string, opts commandOptions) error {
-	outputTmpl, err := template.New("output").Parse(opts.output)
+func RunCommand(paths []string, opts CommandOptions) error {
+	outputTmpl, err := template.New("Output").Parse(opts.Output)
 	if err != nil {
-		return fmt.Errorf("gomarkdoc: invalid output template: %w", err)
+		return fmt.Errorf("gomarkdoc: invalid Output template: %w", err)
 	}
 
-	specs := getSpecs(paths...)
+	specs := GetSpecs(paths...)
 
-	if err := resolveOutput(specs, outputTmpl); err != nil {
+	if err := ResolveOutput(specs, outputTmpl); err != nil {
 		return err
 	}
 
-	if err := loadPackages(specs, opts); err != nil {
+	if err := LoadPackages(specs, opts); err != nil {
 		return err
 	}
 
-	return writeOutput(specs, opts)
+	return WriteOutput(specs, opts)
 }
 
-func resolveOutput(specs []*PackageSpec, outputTmpl *template.Template) error {
+func ResolveOutput(specs []*PackageSpec, outputTmpl *template.Template) error {
 	for _, spec := range specs {
 		var outputFile strings.Builder
 		if err := outputTmpl.Execute(&outputFile, spec); err != nil {
@@ -315,28 +279,28 @@ func resolveOutput(specs []*PackageSpec, outputTmpl *template.Template) error {
 		outputStr := outputFile.String()
 		if outputStr == "" {
 			// Preserve empty values
-			spec.outputFile = ""
+			spec.OutputFile = ""
 		} else {
 			// Clean up other values
-			spec.outputFile = filepath.Clean(outputFile.String())
+			spec.OutputFile = filepath.Clean(outputFile.String())
 		}
 	}
 
 	return nil
 }
 
-func resolveOverrides(opts commandOptions) ([]gomarkdoc.RendererOption, error) {
+func ResolveOverrides(opts CommandOptions) ([]gomarkdoc.RendererOption, error) {
 	var overrides []gomarkdoc.RendererOption
 
 	// Content overrides take precedence over file overrides
-	for name, s := range opts.templateOverrides {
+	for name, s := range opts.TemplateOverrides {
 		overrides = append(overrides, gomarkdoc.WithTemplateOverride(name, s))
 	}
 
-	for name, f := range opts.templateFileOverrides {
+	for name, f := range opts.TemplateFileOverrides {
 		// File overrides get applied only if there isn't already a content
 		// override.
-		if _, ok := opts.templateOverrides[name]; ok {
+		if _, ok := opts.TemplateOverrides[name]; ok {
 			continue
 		}
 
@@ -349,7 +313,7 @@ func resolveOverrides(opts commandOptions) ([]gomarkdoc.RendererOption, error) {
 	}
 
 	var f format.Format
-	switch opts.format {
+	switch opts.Format {
 	case "github":
 		f = &format.GitHubFlavoredMarkdown{}
 	case "azure-devops":
@@ -357,7 +321,7 @@ func resolveOverrides(opts commandOptions) ([]gomarkdoc.RendererOption, error) {
 	case "plain":
 		f = &format.PlainMarkdown{}
 	default:
-		return nil, fmt.Errorf("gomarkdoc: invalid format: %s", opts.format)
+		return nil, fmt.Errorf("gomarkdoc: invalid Format: %s", opts.Format)
 	}
 
 	overrides = append(overrides, gomarkdoc.WithFormat(f))
@@ -365,15 +329,15 @@ func resolveOverrides(opts commandOptions) ([]gomarkdoc.RendererOption, error) {
 	return overrides, nil
 }
 
-func resolveHeader(opts commandOptions) (string, error) {
-	if opts.header != "" {
-		return opts.header, nil
+func ResolveHeader(opts CommandOptions) (string, error) {
+	if opts.Header != "" {
+		return opts.Header, nil
 	}
 
-	if opts.headerFile != "" {
-		b, err := ioutil.ReadFile(opts.headerFile)
+	if opts.HeaderFile != "" {
+		b, err := ioutil.ReadFile(opts.HeaderFile)
 		if err != nil {
-			return "", fmt.Errorf("gomarkdoc: couldn't resolve header file: %w", err)
+			return "", fmt.Errorf("gomarkdoc: couldn't resolve Header file: %w", err)
 		}
 
 		return string(b), nil
@@ -382,15 +346,15 @@ func resolveHeader(opts commandOptions) (string, error) {
 	return "", nil
 }
 
-func resolveFooter(opts commandOptions) (string, error) {
-	if opts.footer != "" {
-		return opts.footer, nil
+func ResolveFooter(opts CommandOptions) (string, error) {
+	if opts.Footer != "" {
+		return opts.Footer, nil
 	}
 
-	if opts.footerFile != "" {
-		b, err := ioutil.ReadFile(opts.footerFile)
+	if opts.FooterFile != "" {
+		b, err := ioutil.ReadFile(opts.FooterFile)
 		if err != nil {
-			return "", fmt.Errorf("gomarkdoc: couldn't resolve footer file: %w", err)
+			return "", fmt.Errorf("gomarkdoc: couldn't resolve Footer file: %w", err)
 		}
 
 		return string(b), nil
@@ -399,15 +363,15 @@ func resolveFooter(opts commandOptions) (string, error) {
 	return "", nil
 }
 
-func loadPackages(specs []*PackageSpec, opts commandOptions) error {
+func LoadPackages(specs []*PackageSpec, opts CommandOptions) error {
 	for _, spec := range specs {
-		log := logger.New(getLogLevel(opts.verbosity), logger.WithField("dir", spec.Dir))
+		log := logger.New(GetLogLevel(opts.Verbosity), logger.WithField("dir", spec.Dir))
 
-		buildPkg, err := getBuildPackage(spec.ImportPath, opts.tags)
+		buildPkg, err := GetBuildPackage(spec.ImportPath, opts.Tags)
 		if err != nil {
 			log.Debugf("unable to load package in directory: %s", err)
 			// We don't care if a wildcard path produces nothing
-			if spec.isWildcard {
+			if spec.IsWildcard {
 				continue
 			}
 
@@ -415,9 +379,9 @@ func loadPackages(specs []*PackageSpec, opts commandOptions) error {
 		}
 
 		var pkgOpts []lang.PackageOption
-		pkgOpts = append(pkgOpts, lang.PackageWithRepositoryOverrides(&opts.repository))
+		pkgOpts = append(pkgOpts, lang.PackageWithRepositoryOverrides(&opts.Repository))
 
-		if opts.includeUnexported {
+		if opts.IncludeUnexported {
 			pkgOpts = append(pkgOpts, lang.PackageWithUnexportedIncluded())
 		}
 
@@ -426,17 +390,17 @@ func loadPackages(specs []*PackageSpec, opts commandOptions) error {
 			return err
 		}
 
-		spec.pkg = pkg
+		spec.Pkg = pkg
 	}
 
 	return nil
 }
 
-func getBuildPackage(path string, tags []string) (*build.Package, error) {
+func GetBuildPackage(path string, tags []string) (*build.Package, error) {
 	ctx := build.Default
 	ctx.BuildTags = tags
 
-	if isLocalPath(path) {
+	if IsLocalPath(path) {
 		pkg, err := ctx.ImportDir(path, build.ImportComment)
 		if err != nil {
 			return nil, fmt.Errorf("gomarkdoc: invalid package in directory: %s", path)
@@ -458,7 +422,7 @@ func getBuildPackage(path string, tags []string) (*build.Package, error) {
 	return pkg, nil
 }
 
-func getSpecs(paths ...string) []*PackageSpec {
+func GetSpecs(paths ...string) []*PackageSpec {
 	var expanded []*PackageSpec
 	for _, path := range paths {
 		// Ensure that the path we're working with is normalized for the OS
@@ -467,7 +431,7 @@ func getSpecs(paths ...string) []*PackageSpec {
 
 		// Not a recursive path
 		if !strings.HasSuffix(path, fmt.Sprintf("%s...", string(os.PathSeparator))) {
-			isLocal := isLocalPath(path)
+			isLocal := IsLocalPath(path)
 			var dir string
 			if isLocal {
 				dir = path
@@ -477,8 +441,8 @@ func getSpecs(paths ...string) []*PackageSpec {
 			expanded = append(expanded, &PackageSpec{
 				Dir:        dir,
 				ImportPath: path,
-				isWildcard: false,
-				isLocal:    isLocal,
+				IsWildcard: false,
+				IsLocal:    isLocal,
 			})
 			continue
 		}
@@ -488,12 +452,12 @@ func getSpecs(paths ...string) []*PackageSpec {
 
 		// Not a file path. Add the original path back to the list so as to not
 		// mislead someone into thinking we're processing the recursive path
-		if !isLocalPath(trimmedPath) {
+		if !IsLocalPath(trimmedPath) {
 			expanded = append(expanded, &PackageSpec{
 				Dir:        ".",
 				ImportPath: path,
-				isWildcard: false,
-				isLocal:    false,
+				IsWildcard: false,
+				IsLocal:    false,
 			})
 			continue
 		}
@@ -501,8 +465,8 @@ func getSpecs(paths ...string) []*PackageSpec {
 		expanded = append(expanded, &PackageSpec{
 			Dir:        trimmedPath,
 			ImportPath: trimmedPath,
-			isWildcard: true,
-			isLocal:    true,
+			IsWildcard: true,
+			IsLocal:    true,
 		})
 
 		queue := list.New()
@@ -523,7 +487,7 @@ func getSpecs(paths ...string) []*PackageSpec {
 			}
 
 			for _, f := range files {
-				if isIgnoredDir(f.Name()) {
+				if IsIgnoredDir(f.Name()) {
 					continue
 				}
 
@@ -533,15 +497,15 @@ func getSpecs(paths ...string) []*PackageSpec {
 					// Some local paths have their prefixes stripped by Join().
 					// If the path is no longer a local path, add the current
 					// working directory.
-					if !isLocalPath(subPath) {
+					if !IsLocalPath(subPath) {
 						subPath = fmt.Sprintf("%s%s", cwdPathPrefix, subPath)
 					}
 
 					expanded = append(expanded, &PackageSpec{
 						Dir:        subPath,
 						ImportPath: subPath,
-						isWildcard: true,
-						isLocal:    true,
+						IsWildcard: true,
+						IsLocal:    true,
 					})
 					queue.PushBack(subPath)
 				}
@@ -554,8 +518,8 @@ func getSpecs(paths ...string) []*PackageSpec {
 
 var ignoredDirs = []string{".git"}
 
-// isIgnoredDir identifies if the dir is one we want to intentionally ignore.
-func isIgnoredDir(dirname string) bool {
+// IsIgnoredDir identifies if the dir is one we want to intentionally ignore.
+func IsIgnoredDir(dirname string) bool {
 	for _, ignored := range ignoredDirs {
 		if ignored == dirname {
 			return true
@@ -570,11 +534,11 @@ const (
 	parentPathPrefix = ".." + string(os.PathSeparator)
 )
 
-func isLocalPath(path string) bool {
+func IsLocalPath(path string) bool {
 	return strings.HasPrefix(path, cwdPathPrefix) || strings.HasPrefix(path, parentPathPrefix) || filepath.IsAbs(path)
 }
 
-func compare(r1, r2 io.Reader) (bool, error) {
+func Compare(r1, r2 io.Reader) (bool, error) {
 	r1Hash := fnv.New128()
 	if _, err := io.Copy(r1Hash, r1); err != nil {
 		return false, fmt.Errorf("gomarkdoc: failed when checking documentation: %w", err)
@@ -588,7 +552,7 @@ func compare(r1, r2 io.Reader) (bool, error) {
 	return bytes.Equal(r1Hash.Sum(nil), r2Hash.Sum(nil)), nil
 }
 
-func getLogLevel(verbosity int) logger.Level {
+func GetLogLevel(verbosity int) logger.Level {
 	switch verbosity {
 	case 0:
 		return logger.WarnLevel
@@ -601,7 +565,7 @@ func getLogLevel(verbosity int) logger.Level {
 	}
 }
 
-func printVersion() {
+func PrintVersion() {
 	if version != "" {
 		fmt.Println(version)
 		return

@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"bytes"
@@ -14,10 +14,11 @@ import (
 	"github.com/princjef/gomarkdoc/logger"
 )
 
-func writeOutput(specs []*PackageSpec, opts commandOptions) error {
-	log := logger.New(getLogLevel(opts.verbosity))
+// WriteOutput writes the Output of the documentation to the specified files.
+func WriteOutput(specs []*PackageSpec, opts CommandOptions) error {
+	log := logger.New(GetLogLevel(opts.Verbosity))
 
-	overrides, err := resolveOverrides(opts)
+	overrides, err := ResolveOverrides(opts)
 	if err != nil {
 		return err
 	}
@@ -27,12 +28,12 @@ func writeOutput(specs []*PackageSpec, opts commandOptions) error {
 		return err
 	}
 
-	header, err := resolveHeader(opts)
+	header, err := ResolveHeader(opts)
 	if err != nil {
 		return err
 	}
 
-	footer, err := resolveFooter(opts)
+	footer, err := ResolveFooter(opts)
 	if err != nil {
 		return err
 	}
@@ -40,11 +41,11 @@ func writeOutput(specs []*PackageSpec, opts commandOptions) error {
 	filePkgs := make(map[string][]*lang.Package)
 
 	for _, spec := range specs {
-		if spec.pkg == nil {
+		if spec.Pkg == nil {
 			continue
 		}
 
-		filePkgs[spec.outputFile] = append(filePkgs[spec.outputFile], spec.pkg)
+		filePkgs[spec.OutputFile] = append(filePkgs[spec.OutputFile], spec.Pkg)
 	}
 
 	for fileName, pkgs := range filePkgs {
@@ -55,22 +56,22 @@ func writeOutput(specs []*PackageSpec, opts commandOptions) error {
 			return err
 		}
 
-		if opts.embed && fileName != "" {
-			text = embedContents(log, fileName, text)
+		if opts.Embed && fileName != "" {
+			text = EmbedContents(log, fileName, text)
 		}
 
 		switch {
 		case fileName == "":
 			fmt.Fprint(os.Stdout, text)
-		case opts.check:
+		case opts.Check:
 			var b bytes.Buffer
 			fmt.Fprint(&b, text)
-			if err := checkFile(&b, fileName); err != nil {
+			if err := CheckFile(&b, fileName); err != nil {
 				return err
 			}
 		default:
-			if err := writeFile(fileName, text); err != nil {
-				return fmt.Errorf("failed to write output file %s: %w", fileName, err)
+			if err := WriteFile(fileName, text); err != nil {
+				return fmt.Errorf("failed to write Output file %s: %w", fileName, err)
 			}
 		}
 	}
@@ -78,7 +79,8 @@ func writeOutput(specs []*PackageSpec, opts commandOptions) error {
 	return nil
 }
 
-func writeFile(fileName string, text string) error {
+// WriteFile writes the specified text to the specified file.
+func WriteFile(fileName string, text string) error {
 	folder := filepath.Dir(fileName)
 
 	if folder != "" {
@@ -94,8 +96,8 @@ func writeFile(fileName string, text string) error {
 	return nil
 }
 
-func checkFile(b *bytes.Buffer, path string) error {
-	checkErr := errors.New("output does not match current files. Did you forget to run gomarkdoc?")
+func CheckFile(b *bytes.Buffer, path string) error {
+	checkErr := errors.New("Output does not match current files. Did you forget to run gomarkdoc?")
 
 	f, err := os.Open(path)
 	if err != nil {
@@ -108,9 +110,9 @@ func checkFile(b *bytes.Buffer, path string) error {
 
 	defer f.Close()
 
-	match, err := compare(b, f)
+	match, err := Compare(b, f)
 	if err != nil {
-		return fmt.Errorf("failure while attempting to check contents of %s: %w", path, err)
+		return fmt.Errorf("failure while attempting to Check contents of %s: %w", path, err)
 	}
 
 	if !match {
@@ -121,18 +123,18 @@ func checkFile(b *bytes.Buffer, path string) error {
 }
 
 var (
-	embedStandaloneRegex = regexp.MustCompile(`(?m:^ *)<!--\s*gomarkdoc:embed\s*-->(?m:\s*?$)`)
+	embedStandaloneRegex = regexp.MustCompile(`(?m:^ *)<!--\s*gomarkdoc:Embed\s*-->(?m:\s*?$)`)
 	embedStartRegex      = regexp.MustCompile(
-		`(?m:^ *)<!--\s*gomarkdoc:embed:start\s*-->(?s:.*?)<!--\s*gomarkdoc:embed:end\s*-->(?m:\s*?$)`,
+		`(?m:^ *)<!--\s*gomarkdoc:Embed:start\s*-->(?s:.*?)<!--\s*gomarkdoc:Embed:end\s*-->(?m:\s*?$)`,
 	)
 )
 
-func embedContents(log logger.Logger, fileName string, text string) string {
-	embedText := fmt.Sprintf("<!-- gomarkdoc:embed:start -->\n\n%s\n\n<!-- gomarkdoc:embed:end -->", text)
+func EmbedContents(log logger.Logger, fileName string, text string) string {
+	embedText := fmt.Sprintf("<!-- gomarkdoc:Embed:start -->\n\n%s\n\n<!-- gomarkdoc:Embed:end -->", text)
 
 	data, err := os.ReadFile(fileName)
 	if err != nil {
-		log.Debugf("unable to find output file %s for embedding. Creating a new file instead", fileName)
+		log.Debugf("unable to find Output file %s for embedding. Creating a new file instead", fileName)
 		return embedText
 	}
 
@@ -148,7 +150,7 @@ func embedContents(log logger.Logger, fileName string, text string) string {
 	})
 
 	if replacements == 0 {
-		log.Debugf("no embed markers found. Appending documentation to the end of the file instead")
+		log.Debugf("no Embed markers found. Appending documentation to the end of the file instead")
 		return fmt.Sprintf("%s\n\n%s", string(data), text)
 	}
 

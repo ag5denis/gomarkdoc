@@ -1,15 +1,16 @@
 package main
 
 import (
+	C "github.com/princjef/gomarkdoc/cmd"
 	"log"
 )
 
 func main() {
 	log.SetFlags(0)
 
-	cmd := buildCommand()
+	buildCmd := C.BuildCommand()
 
-	if err := cmd.Execute(); err != nil {
+	if err := buildCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
